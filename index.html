@@ -1,15 +1,50 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <title>单词库</title>
   <script src="e2c-dict.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+    }
+
+    input {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 35px;
+      text-align: center;
+    }
+
+    table {
+      margin-top: 40px;
+      width: 100%;
+    }
+
+    table td {
+      padding: 8px 16px;
+    }
+
+    table tr:nth-child(2n-1) {
+      background: rgba(0, 0, 0, .05);
+    }
+  </style>
 </head>
+
 <body>
   <input type="text">
-  <div id="dicts"></div>
+  <table id="dicts"></table>
   <script src="app.js"></script>
 </body>
+
 </html>

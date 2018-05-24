@@ -70,13 +70,13 @@ var dicts = doc.getElementById('dicts');
 var appText = (vals) => {
   var frag = doc.createDocumentFragment();
   vals.forEach(v => {
-    var word = doc.createElement('span');
+    var word = doc.createElement('td');
     word.className = 'word';
     word.innerText = v.word;
-    var mean = doc.createElement('span');
+    var mean = doc.createElement('td');
     mean.className = 'mean';
     mean.innerText = v.mean;
-    var p = doc.createElement('p');
+    var p = doc.createElement('tr');
     p.appendChild(word);
     p.appendChild(mean);
     frag.appendChild(p);
