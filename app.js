@@ -1,6 +1,6 @@
 var doc = document, body = doc.body;
 
-var words = Object.keys(wordMeaning);
+var wordList = Object.keys(wordMeaning);
 
 var search = (() => {
   var curIndex = 0;
@@ -16,54 +16,87 @@ var search = (() => {
     if (text !== curText) {
       init(text);
     }
-    while (count > 0) {
-      var word = next(text);
+    while (count > 0 && curIndex < wordList.length) {
+      var word = next();
       if (word) {
-        res.txt.push({ word, mean: wordMeaning['$' + word] });
+        res.txt.push({ words: word.words, mean: wordMeaning['$' + word.word] });
         count--;
       }
-      if (curIndex >= words.length) {
+      curIndex++;
+      if (curIndex >= wordList.length) {
         res.end = true;
         break;
       }
     }
     return res;
   }
-  var next = (text) => {
-    var word = words[curIndex].slice(1);
-    var target = word;
-    var i = 0;
-    do {
-      target = split(target, curKeywords[i]);
-      i++;
+  var next = () => {
+    var word = wordList[curIndex].slice(1);
+    var splitWord = [];
+    var keywordCount = curKeywords.length;
+    var inFirst = curKeywords[keywordCount - 1] === '';
+    var inLast = curKeywords[0] === '';
+    var check = 0;
+    var remainWord = word;
+    for (var key = 0; key < keywordCount; key++) {
+      var keyword = curKeywords[key];
+      if (keyword === '') {
+        check++;
+        continue;
+      }
+      var keyIndex = remainWord.indexOf(keyword);
+      if (keyIndex >= 0) {
+        if (inFirst && key === +inLast && keyIndex !== 0 ||
+          inLast && key === keywordCount - 1 - inFirst &&
+          remainWord.length - keyIndex - keyword.length !== 0) {
+          break;
+        }
+        check++;
+        if (keyIndex > 0) {
+          splitWord.push({
+            text: remainWord.slice(0, keyIndex),
+            light: false,
+          });
+        }
+        splitWord.push({
+          text: remainWord.slice(keyIndex, keyIndex + keyword.length),
+          light: true,
+        });
+        remainWord = remainWord.slice(keyIndex + keyword.length);
+      }
+      else {
+        break;
+      }
     }
-    while (target && curKeywords[i]);
-    curIndex++;
-    if (target != null) return word;
-  }
-  var split = (word, keyword) => {
-    var index = word.indexOf(keyword);
-    if (index >= 0) {
-      return word.slice(index + keyword.length);
-    }
+    splitWord.push({
+      text: remainWord,
+      light: false,
+    });
+    if (check === keywordCount) return { word, words: splitWord };
   }
   return search;
 })();
 
-var curText = '';
 var inputer = doc.getElementsByTagName('input')[0];
+var curText = inputer.value = self.location.hash.split('#').join('');
+
 inputer.oninput = (e) => {
-  var text = inputer.value.trim();
+  var text = inputer.value.split(/\s+/).join(' ');
   if (text != curText) {
     dicts.innerHTML = '';
     curText = text;
-    var res;
-    do {
-      res = search(text, 10);
-      appText(res.txt);
-    }
-    while (!res.end && body.clientHeight < window.innerHeight);
+    self.location.hash = text;
+    start(text);
   }
+}
+
+var start = (text) => {
+  var res;
+  do {
+    res = search(text, 10);
+    appText(res.txt);
+  }
+  while (!res.end && body.clientHeight < window.innerHeight);
 }
 
 var dicts = doc.getElementById('dicts');
@@ -72,7 +105,17 @@ var appText = (vals) => {
   vals.forEach(v => {
     var word = doc.createElement('td');
     word.className = 'word';
-    word.innerText = v.word;
+    var n = 0;
+    v.words.forEach(w => {
+      var text = doc.createElement('span');
+      text.innerText = w.text;
+      if (w.light) {
+        text.className = 'light';
+        text.style.background = 'hsl(' + (360 - (n * 60 + 90) % 360) + ',100%,80%)';
+        n++;
+      }
+      word.appendChild(text);
+    });
     var mean = doc.createElement('td');
     mean.className = 'mean';
     mean.innerText = v.mean;
@@ -84,9 +127,42 @@ var appText = (vals) => {
   dicts.appendChild(frag);
 }
 
+start(curText);
+
+function getScrollTop() {
+  var scrollTop = 0, bodyScrollTop = 0, documentScrollTop = 0;
+  if (document.body) {
+    bodyScrollTop = document.body.scrollTop;
+  }
+  if (document.documentElement) {
+    documentScrollTop = document.documentElement.scrollTop;
+  }
+  scrollTop = (bodyScrollTop - documentScrollTop > 0) ? bodyScrollTop : documentScrollTop;
+  return scrollTop;
+}
+function getScrollHeight() {
+  var scrollHeight = 0, bodyScrollHeight = 0, documentScrollHeight = 0;
+  if (document.body) {
+    bodyScrollHeight = document.body.scrollHeight;
+  }
+  if (document.documentElement) {
+    documentScrollHeight = document.documentElement.scrollHeight;
+  }
+  scrollHeight = (bodyScrollHeight - documentScrollHeight > 0) ? bodyScrollHeight : documentScrollHeight;
+  return scrollHeight;
+}
+function getWindowHeight() {
+  var windowHeight = 0;
+  if (document.compatMode == "CSS1Compat") {
+    windowHeight = document.documentElement.clientHeight;
+  } else {
+    windowHeight = document.body.clientHeight;
+  }
+  return windowHeight;
+}
 window.onscroll = (e) => {
-  if (body.scrollTop + body.clientHeight == body.scrollHeight) {
-    var res = search(curText, 2);
+  if (getScrollTop() + getWindowHeight() - getScrollHeight() > -10) {
+    var res = search(curText, 10);
     appText(res.txt);
   }
 }
