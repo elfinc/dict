@@ -78,7 +78,7 @@ var search = (() => {
 })();
 
 var inputer = doc.getElementsByTagName('input')[0];
-var curText = inputer.value = self.location.hash.split('#').join('');
+var curText = inputer.value = decodeURI(self.location.hash).slice(1);
 
 inputer.oninput = (e) => {
   var text = inputer.value.split(/\s+/).join(' ');
@@ -161,7 +161,7 @@ function getWindowHeight() {
   return windowHeight;
 }
 window.onscroll = (e) => {
-  if (getScrollTop() + getWindowHeight() - getScrollHeight() > -10) {
+  if (getScrollTop() + getWindowHeight() - getScrollHeight() > -100) {
     var res = search(curText, 10);
     appText(res.txt);
   }
