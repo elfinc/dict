@@ -1,6 +1,17 @@
 var doc = document, body = doc.body;
 
 var wordList = Object.keys(wordMeaning);
+wordList.forEach(word => {
+  var mean = wordMeaning[word];
+  var synonym = mean.split('=')[1];
+  if (synonym) {
+    synonym = synonym.split(' ')[0];
+    _mean = wordMeaning[synonym];
+    if (_mean) {
+      wordMeaning[word] = mean + '\n' + synonym + ': ' + _mean;
+    }
+  }
+});
 
 var search = (() => {
   var curIndex = 0;
@@ -19,7 +30,7 @@ var search = (() => {
     while (count > 0 && curIndex < wordList.length) {
       var word = next();
       if (word) {
-        res.txt.push({ words: word.words, mean: wordMeaning['$' + word.word] });
+        res.txt.push({ words: word.words, means: word.means });
         count--;
       }
       curIndex++;
@@ -31,48 +42,91 @@ var search = (() => {
     return res;
   }
   var next = () => {
-    var word = wordList[curIndex].slice(1);
+    var word = wordList[curIndex];
+    var mean = wordMeaning[word];
     var splitWord = [];
+    var splitMean = [];
     var keywordCount = curKeywords.length;
     var inFirst = curKeywords[keywordCount - 1] === '';
     var inLast = curKeywords[0] === '';
     var check = 0;
     var remainWord = word;
+    var remainMean = mean;
     for (var key = 0; key < keywordCount; key++) {
       var keyword = curKeywords[key];
+      // 首尾空字符
       if (keyword === '') {
         check++;
         continue;
       }
-      var keyIndex = remainWord.indexOf(keyword);
-      if (keyIndex >= 0) {
-        if (inFirst && key === +inLast && keyIndex !== 0 ||
-          inLast && key === keywordCount - 1 - inFirst &&
-          remainWord.length - keyIndex - keyword.length !== 0) {
+      // 关键字全英文 检索单词
+      if (/^[a-zA-Z]+$/.test(keyword)) {
+        var keyIndex = remainWord.indexOf(keyword);
+        if (keyIndex >= 0) {
+          // 以首尾字母判断
+          if (inFirst && key === +inLast && keyIndex !== 0 ||
+            inLast && key === keywordCount - 1 - inFirst &&
+            remainWord.length - keyIndex - keyword.length !== 0) {
+            break;
+          }
+          check++;
+          if (keyIndex > 0) {
+            // 略过字母
+            splitWord.push({
+              text: remainWord.slice(0, keyIndex),
+              light: false,
+            });
+          }
+          // 匹配字母
+          splitWord.push({
+            text: remainWord.slice(keyIndex, keyIndex + keyword.length),
+            light: true,
+          });
+          remainWord = remainWord.slice(keyIndex + keyword.length);
+        }
+        else {
           break;
         }
-        check++;
-        if (keyIndex > 0) {
-          splitWord.push({
-            text: remainWord.slice(0, keyIndex),
-            light: false,
-          });
-        }
-        splitWord.push({
-          text: remainWord.slice(keyIndex, keyIndex + keyword.length),
-          light: true,
-        });
-        remainWord = remainWord.slice(keyIndex + keyword.length);
+        continue;
       }
+      // 关键字含其他字符 检索翻译
       else {
-        break;
+        var keyIndex = remainMean.indexOf(keyword);
+        if (keyIndex >= 0) {
+          check++;
+          if (keyIndex > 0) {
+            splitMean.push({
+              text: remainMean.slice(0, keyIndex),
+              light: false,
+            });
+          }
+          splitMean.push({
+            text: remainMean.slice(keyIndex, keyIndex + keyword.length),
+            light: true,
+          });
+          remainMean = remainMean.slice(keyIndex + keyword.length);
+        }
+        else {
+          break;
+        }
+        continue;
       }
     }
-    splitWord.push({
-      text: remainWord,
-      light: false,
-    });
-    if (check === keywordCount) return { word, words: splitWord };
+    if (check === keywordCount) {
+      // 补全检索
+      splitWord.push({
+        text: remainWord,
+        light: false,
+      });
+      splitMean.push({
+        text: remainMean,
+        light: false,
+      });
+      return {
+        words: splitWord,
+        means: splitMean
+      };
+    }
   }
   return search;
 })();
@@ -118,7 +172,16 @@ var appText = (vals) => {
     });
     var mean = doc.createElement('td');
     mean.className = 'mean';
-    mean.innerText = v.mean;
+    v.means.forEach(m => {
+      var text = doc.createElement('span');
+      text.innerText = m.text;
+      if (m.light) {
+        text.className = 'light';
+        text.style.background = 'hsl(' + (360 - (n * 60 + 90) % 360) + ',100%,80%)';
+        n++;
+      }
+      mean.appendChild(text);
+    });
     var p = doc.createElement('tr');
     p.appendChild(word);
     p.appendChild(mean);
