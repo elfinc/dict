@@ -160,7 +160,8 @@ function getWindowHeight() {
   }
   return windowHeight;
 }
-window.onscroll = (e) => {
+
+self.onresize = self.onscroll = () => {
   if (getScrollTop() + getWindowHeight() - getScrollHeight() > -100) {
     var res = search(curText, 10);
     appText(res.txt);
