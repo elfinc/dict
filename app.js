@@ -191,35 +191,47 @@ var search = (() => {
 })();
 
 var inputer = doc.getElementsByTagName('input')[0];
-var curText = inputer.value = decodeURI(self.location.hash).slice(1).split(/\s+/).join(' ').toLowerCase();
+var tips = doc.querySelector('#tips>span');
+var curText = tips.innerHTML = inputer.value = decodeURI(self.location.hash).slice(1).split(/\s+/).join(' ').toLowerCase();
+if (curText[0] == ' ') tips.classList.add('b');
+if (curText[curText.length - 1] == ' ') tips.classList.add('a');
 var keywords = curText.trim().split(' ');
 
 inputer.oninput = (e) => {
+  tips.innerHTML = inputer.value;
   var text = inputer.value.split(/\s+/).join(' ').toLowerCase();
+  tips.className = '';
+  if (text[0] == ' ') tips.classList.add('b');
+  if (text[text.length - 1] == ' ') tips.classList.add('a');
   if (text != curText) {
     keywords = text.trim().split(' ');
-    dicts.innerHTML = '';
     curText = text;
     self.location.hash = text;
-    start(text, keywords);
+    start(text, true);
   }
 }
 
-var waitHandler;
-var start = (text, keywords) => {
-  cancelAnimationFrame(waitHandler);
-  waitHandler = requestAnimationFrame(function () {
-    var res;
-    do {
-      res = search(text, 10);
-      appText(res.txt, keywords);
-    }
-    while (!res.end && body.clientHeight < window.innerHeight);
-  });
+var waitHandler = { t: null, a: null };
+var start = (text, isNew) => {
+  clearTimeout(waitHandler.t);
+  cancelAnimationFrame(waitHandler.a);
+  waitHandler.t = setTimeout(() => {
+    waitHandler.a = requestAnimationFrame(function () {
+      if (isNew) {
+        dicts.innerHTML = '';
+      }
+      var res;
+      do {
+        res = search(text, 10);
+        appText(res.txt);
+      }
+      while (!res.end && body.clientHeight < window.innerHeight);
+    });
+  }, 100);
 }
 
 var dicts = doc.getElementById('dicts');
-var appText = (vals, keywords) => {
+var appText = (vals) => {
   var frag = doc.createDocumentFragment();
   vals.forEach(v => {
     var word = doc.createElement('td');
@@ -255,7 +267,7 @@ var appText = (vals, keywords) => {
   dicts.appendChild(frag);
 }
 
-start(curText, keywords);
+start(curText, true);
 
 function getScrollTop() {
   var scrollTop = 0, bodyScrollTop = 0, documentScrollTop = 0;
