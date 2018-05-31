@@ -17,10 +17,17 @@ var search = (() => {
   var curIndex = 0;
   var curText = '';
   var curKeywords = [];
+  var accuKeywords = [];
   var init = (text) => {
     curIndex = 0;
     curText = text;
     curKeywords = text.split(/\s+/);
+    accuKeywords.length = 0;
+    curKeywords.forEach(k => {
+      if (wordMeaning[k] && accuKeywords.indexOf(k) < 0) {
+        accuKeywords.push(k);
+      }
+    });
   }
   var search = (text, count) => {
     var res = { txt: [], end: false };
@@ -28,9 +35,20 @@ var search = (() => {
       init(text);
     }
     while (count > 0 && curIndex < wordList.length) {
-      var word = next();
+      var word;
+      if (curIndex < accuKeywords.length) {
+        var t = accuKeywords[curIndex];
+        word = {
+          words: [{ text: t, light: true }],
+          means: accu(t),
+          index: curIndex
+        }
+      }
+      else {
+        word = next(curIndex - accuKeywords.length);
+      }
       if (word) {
-        res.txt.push({ words: word.words, means: word.means });
+        res.txt.push(word);
         count--;
       }
       curIndex++;
@@ -41,8 +59,8 @@ var search = (() => {
     }
     return res;
   }
-  var next = () => {
-    var word = wordList[curIndex];
+  var next = (index) => {
+    var word = wordList[index];
     var mean = wordMeaning[word];
     var splitWord = [];
     var splitMean = [];
@@ -52,6 +70,7 @@ var search = (() => {
     var check = 0;
     var remainWord = word;
     var remainMean = mean;
+    var keyNum = inLast ? -1 : 0;
     for (var key = 0; key < keywordCount; key++) {
       var keyword = curKeywords[key];
       // 首尾空字符
@@ -59,8 +78,20 @@ var search = (() => {
         check++;
         continue;
       }
+      // 判断单词完全相等
+      else if (keyword === word) {
+        check = Infinity;
+        keyNum += key;
+        // 匹配字母
+        splitWord = [{
+          text: word,
+          light: true,
+        }];
+        remainWord = '';
+        continue;
+      }
       // 关键字全英文 检索单词
-      if (/^[a-zA-Z]+$/.test(keyword)) {
+      else if (/^[a-zA-Z]+$/.test(keyword) && isFinite(check)) {
         var keyIndex = remainWord.indexOf(keyword);
         if (keyIndex >= 0) {
           // 以首尾字母判断
@@ -85,7 +116,7 @@ var search = (() => {
           remainWord = remainWord.slice(keyIndex + keyword.length);
         }
         else {
-          break;
+          check--;
         }
         continue;
       }
@@ -112,49 +143,83 @@ var search = (() => {
         continue;
       }
     }
-    if (check === keywordCount) {
+    if (check >= keywordCount) {
       // 补全检索
-      splitWord.push({
+      if (remainWord) splitWord.push({
         text: remainWord,
         light: false,
       });
-      splitMean.push({
+      if (remainMean) splitMean.push({
         text: remainMean,
         light: false,
       });
       return {
         words: splitWord,
-        means: splitMean
+        means: splitMean,
+        index: keyNum,
+        bingo: !isFinite(check)
       };
     }
+  }
+  var accu = text => {
+    var remainMean = wordMeaning[text];
+    var splitMean = [];
+    curKeywords.forEach(k => {
+      if (k === '') return;
+      var keyIndex = remainMean.indexOf(k);
+      if (keyIndex >= 0) {
+        if (keyIndex > 0) {
+          splitMean.push({
+            text: remainMean.slice(0, keyIndex),
+            light: false,
+          });
+        }
+        splitMean.push({
+          text: remainMean.slice(keyIndex, keyIndex + k.length),
+          light: true,
+        });
+        remainMean = remainMean.slice(keyIndex + k.length);
+      }
+    });
+    if (remainMean) splitMean.push({
+      text: remainMean,
+      light: false,
+    });
+    return splitMean;
   }
   return search;
 })();
 
 var inputer = doc.getElementsByTagName('input')[0];
-var curText = inputer.value = decodeURI(self.location.hash).slice(1);
+var curText = inputer.value = decodeURI(self.location.hash).slice(1).split(/\s+/).join(' ').toLowerCase();
+var keywords = curText.trim().split(' ');
 
 inputer.oninput = (e) => {
-  var text = inputer.value.split(/\s+/).join(' ');
+  var text = inputer.value.split(/\s+/).join(' ').toLowerCase();
   if (text != curText) {
+    keywords = text.trim().split(' ');
     dicts.innerHTML = '';
     curText = text;
     self.location.hash = text;
-    start(text);
+    start(text, keywords);
   }
 }
 
-var start = (text) => {
-  var res;
-  do {
-    res = search(text, 10);
-    appText(res.txt);
-  }
-  while (!res.end && body.clientHeight < window.innerHeight);
+var waitHandler;
+var start = (text, keywords) => {
+  cancelAnimationFrame(waitHandler);
+  waitHandler = requestAnimationFrame(function () {
+    var res;
+    do {
+      res = search(text, 10);
+      appText(res.txt, keywords);
+    }
+    while (!res.end && body.clientHeight < window.innerHeight);
+  });
 }
 
 var dicts = doc.getElementById('dicts');
-var appText = (vals) => {
+var appText = (vals, keywords) => {
   var frag = doc.createDocumentFragment();
   vals.forEach(v => {
     var word = doc.createElement('td');
@@ -165,7 +230,7 @@ var appText = (vals) => {
       text.innerText = w.text;
       if (w.light) {
         text.className = 'light';
-        text.style.background = 'hsl(' + (360 - (n * 60 + 90) % 360) + ',100%,80%)';
+        text.style.background = 'hsl(' + (360 - ((n + v.index) * 60 + 90) % 360) + ',100%,80%)';
         n++;
       }
       word.appendChild(text);
@@ -185,12 +250,12 @@ var appText = (vals) => {
     var p = doc.createElement('tr');
     p.appendChild(word);
     p.appendChild(mean);
-    frag.appendChild(p);
+    if (!v.bingo) frag.appendChild(p);
   });
   dicts.appendChild(frag);
 }
 
-start(curText);
+start(curText, keywords);
 
 function getScrollTop() {
   var scrollTop = 0, bodyScrollTop = 0, documentScrollTop = 0;
