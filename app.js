@@ -21,7 +21,7 @@ var search = (() => {
   var init = (text) => {
     curIndex = 0;
     curText = text;
-    curKeywords = text.split(/\s+/);
+    curKeywords = text.split(' ');
     accuKeywords.length = 0;
     curKeywords.forEach(k => {
       if (wordMeaning[k] && accuKeywords.indexOf(k) < 0) {
@@ -190,16 +190,25 @@ var search = (() => {
   return search;
 })();
 
+var isplit = s =>
+  s.split(/[,|\.|:]/).join(' ').split(/\s+/);
+
+
 var inputer = doc.getElementsByTagName('input')[0];
 var tips = doc.querySelector('#tips>span');
-var curText = tips.innerHTML = inputer.value = decodeURI(self.location.hash).slice(1).split(/\s+/).join(' ').toLowerCase();
+var curText = tips.innerHTML = inputer.value = isplit(decodeURI(self.location.hash).slice(1)).join(' ').toLowerCase();
 if (curText[0] == ' ') tips.classList.add('b');
 if (curText[curText.length - 1] == ' ') tips.classList.add('a');
 var keywords = curText.trim().split(' ');
 
 inputer.oninput = (e) => {
+  var text = isplit(inputer.value).join(' ');
+  var iinput = inputer.value.split(/\s+/).join(' ');
+  if (inputer.value !== iinput) {
+    inputer.value = iinput;
+  }
   tips.innerHTML = inputer.value;
-  var text = inputer.value.split(/\s+/).join(' ').toLowerCase();
+  text = text.toLowerCase();
   tips.className = '';
   if (text[0] == ' ') tips.classList.add('b');
   if (text[text.length - 1] == ' ') tips.classList.add('a');
@@ -227,7 +236,7 @@ var start = (text, isNew) => {
       }
       while (!res.end && body.clientHeight < window.innerHeight);
     });
-  }, 100);
+  }, 50);
 }
 
 var dicts = doc.getElementById('dicts');
