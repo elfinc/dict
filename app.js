@@ -239,6 +239,16 @@ var start = (text, isNew) => {
   }, 50);
 }
 
+var speak = (text) => {
+  try {
+    if (speechSynthesis.speaking) {
+      return
+    }
+    var utter = new SpeechSynthesisUtterance(text)
+    speechSynthesis.speak(utter)
+  } catch (e) { }
+}
+
 var dicts = doc.getElementById('dicts');
 var appText = (vals) => {
   var frag = doc.createDocumentFragment();
@@ -246,9 +256,11 @@ var appText = (vals) => {
     var word = doc.createElement('td');
     word.className = 'word';
     var n = 0;
+    var fullText = ''
     v.words.forEach(w => {
       var text = doc.createElement('span');
       text.innerText = w.text;
+      fullText += w.text
       if (w.light) {
         text.className = 'light';
         text.style.background = 'hsl(' + (360 - ((n + v.index) * 60 + 90) % 360) + ',100%,80%)';
@@ -256,6 +268,7 @@ var appText = (vals) => {
       }
       word.appendChild(text);
     });
+    word.onclick = () => speak(fullText);
     var mean = doc.createElement('td');
     mean.className = 'mean';
     v.means.forEach(m => {
