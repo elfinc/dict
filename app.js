@@ -245,7 +245,7 @@ var speak = (text) => {
       return;
     }
     var utter = new SpeechSynthesisUtterance(text);
-    utter.lang = 'en-US';
+    utter.lang = 'en';
     speechSynthesis.speak(utter);
   } catch (e) { }
 }
