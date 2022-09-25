@@ -242,10 +242,11 @@ var start = (text, isNew) => {
 var speak = (text) => {
   try {
     if (speechSynthesis.speaking) {
-      return
+      return;
     }
-    var utter = new SpeechSynthesisUtterance(text)
-    speechSynthesis.speak(utter)
+    var utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'en-US';
+    speechSynthesis.speak(utter);
   } catch (e) { }
 }
 
